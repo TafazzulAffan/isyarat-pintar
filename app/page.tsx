@@ -1,7 +1,49 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { FloatingBall } from '@/components/floating-ball'
 import Image from 'next/image'
+import { authService } from '@/lib/api-services';
 
 export default function LoginPage() {
+	const router = useRouter();
+	const [email, setEmail] = useState('');
+	const [password, setPassword] = useState('');
+	const [isLoading, setIsLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [showPassword, setShowPassword] = useState(false);
+
+	const handleLogin = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setError(null);
+		setIsLoading(true);
+
+		try {
+			const response = await authService.login(email, password);
+			
+			console.log('[PAGE] Login response:', response);
+
+			// Add small delay to ensure cookies are set before redirect
+			await new Promise(resolve => setTimeout(resolve, 500));
+
+			// Redirect ke dashboard sesuai role
+			const userRole = response?.data?.user?.role || response?.data?.role;
+			console.log('[PAGE] User role:', userRole);
+			if (userRole === 'guru' || userRole === 'admin') {
+				router.push('/admin/dashboard');
+			} else {
+				router.push('/dashboard');
+			}
+		} catch (err: any) {
+			console.error('Login error:', err);
+			const errorMessage = err?.response?.data?.message || err?.message || 'Login gagal. Silakan cek email dan password Anda.';
+			setError(errorMessage);
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
 	return (
 		<main className="h-screen bg-[#0a1f29] p-0">
 			<section className="flex h-screen w-screen overflow-hidden bg-[#093140]">
@@ -125,16 +167,26 @@ export default function LoginPage() {
 							<p className="mt-2 text-base text-black/70">Silahkan Masuk ke Akun Anda</p>
 						</div>
 
-						<form className="mt-8 w-full space-y-4">
+						{error && (
+							<div className="mt-6 w-full rounded-lg bg-red-50 border border-red-200 p-3">
+								<p className="text-sm text-red-700">{error}</p>
+							</div>
+						)}
+
+						<form onSubmit={handleLogin} className="mt-8 w-full space-y-4">
 							<div>
-								<label htmlFor="username" className="mb-1.5 block text-sm font-medium text-black/80">
-									Username
+								<label htmlFor="email" className="mb-1.5 block text-sm font-medium text-black/80">
+									Email
 								</label>
 								<input
-									id="username"
-									type="text"
-									placeholder="Enter Username"
-									className="h-11 w-full rounded-lg border border-black/30 bg-white px-4 text-sm text-black outline-none transition focus:border-[#064e4f] focus:ring-2 focus:ring-[#0f766e]/20"
+									id="email"
+									type="email"
+									value={email}
+									onChange={(e) => setEmail(e.target.value)}
+									placeholder="Masukkan email Anda"
+									required
+									disabled={isLoading}
+									className="h-11 w-full rounded-lg border border-black/30 bg-white px-4 text-sm text-black outline-none transition focus:border-[#064e4f] focus:ring-2 focus:ring-[#0f766e]/20 disabled:bg-gray-100 disabled:cursor-not-allowed"
 								/>
 							</div>
 
@@ -142,19 +194,34 @@ export default function LoginPage() {
 								<label htmlFor="password" className="mb-1.5 block text-sm font-medium text-black/80">
 									Password
 								</label>
-								<input
-									id="password"
-									type="password"
-									placeholder="Enter Password"
-									className="h-11 w-full rounded-lg border border-black/30 bg-white px-4 text-sm text-black outline-none transition focus:border-[#064e4f] focus:ring-2 focus:ring-[#0f766e]/20"
-								/>
+								<div className="relative">
+									<input
+										id="password"
+										type={showPassword ? 'text' : 'password'}
+										value={password}
+										onChange={(e) => setPassword(e.target.value)}
+										placeholder="Masukkan password Anda"
+										required
+										disabled={isLoading}
+										className="h-11 w-full rounded-lg border border-black/30 bg-white px-4 pr-10 text-sm text-black outline-none transition focus:border-[#064e4f] focus:ring-2 focus:ring-[#0f766e]/20 disabled:bg-gray-100 disabled:cursor-not-allowed"
+									/>
+									<button
+										type="button"
+										onClick={() => setShowPassword(!showPassword)}
+										className="absolute right-3 top-1/2 -translate-y-1/2 text-black/60 hover:text-black text-lg"
+										disabled={isLoading}
+									>
+										{showPassword ? '👁️' : '👁️‍🗨️'}
+									</button>
+								</div>
 							</div>
 
 							<button
 								type="submit"
-								className="mt-2 h-11 w-full rounded-lg bg-[#014f52] text-sm font-semibold text-white transition hover:bg-[#026266]"
+								disabled={isLoading}
+								className="mt-2 h-11 w-full rounded-lg bg-[#014f52] text-sm font-semibold text-white transition hover:bg-[#026266] disabled:bg-gray-400 disabled:cursor-not-allowed"
 							>
-								Login
+								{isLoading ? 'Logging in...' : 'Login'}
 							</button>
 						</form>
 					</div>

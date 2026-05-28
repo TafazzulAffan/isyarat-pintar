@@ -1,14 +1,29 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Menu, X, LayoutDashboard, BookOpen, CheckSquare, FileText, Settings, LogOut, Bell } from 'lucide-react'
+import { useAuth } from '@/hooks/use-auth'
+import { authService } from '@/lib/api-services'
 
 interface SidebarProps {
   isOpen: boolean
   setIsOpen: (open: boolean) => void
 }
 
+interface UserData {
+  id: number
+  name: string
+  email: string
+  username: string
+  role: string
+  role_label: string
+  profile_photo_url: string | null
+}
+
 export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
+  const { user: authUser } = useAuth()
+  const [userData, setUserData] = useState<UserData | null>(null)
+  const [loadingUser, setLoadingUser] = useState(true)
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
     { icon: BookOpen, label: 'Materials', href: '/materials' },
@@ -20,6 +35,27 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     { icon: Settings, label: 'Settings', href: '#' },
     { icon: LogOut, label: 'Logout', href: '#' },
   ]
+
+  // Fetch user data from API
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        if (authUser?.id) {
+          setLoadingUser(true)
+          const response = await authService.getUserById(authUser.id)
+          if (response.data) {
+            setUserData(response.data)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch user data:', error)
+      } finally {
+        setLoadingUser(false)
+      }
+    }
+
+    fetchUserData()
+  }, [authUser?.id])
 
   return (
     <>
@@ -105,11 +141,13 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           <div className="mt-4 p-4 rounded-xl bg-linear-to-r from-teal-50 to-emerald-50 border border-teal-100">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-linear-to-br from-teal-500 to-emerald-500 flex items-center justify-center shrink-0">
-                <span className="text-white font-bold text-sm">SA</span>
+                <span className="text-white font-bold text-sm">
+                  {userData ? (userData.name.split(' ').map(n => n[0]).slice(0, 2).join('') || 'U') : 'SA'}
+                </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-700 truncate">Student</p>
-                <p className="text-xs text-slate-400 truncate">student@isyarat.id</p>
+                <p className="text-sm font-semibold text-slate-700 truncate">{userData?.name || 'Student'}</p>
+                <p className="text-xs text-slate-400 truncate">{userData?.email || 'student@isyarat.id'}</p>
               </div>
             </div>
           </div>

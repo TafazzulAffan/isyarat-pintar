@@ -6,15 +6,28 @@ import { usePathname, useRouter } from 'next/navigation'
 import { Bell, LogOut, Settings, Menu } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import NavMobile from './nav-mobile'
+import { useAuth } from '@/hooks/use-auth'
+import { authService } from '@/lib/api-services'
 
 interface NavbarProps {
   onMenuClick?: () => void
   isSidebarOpen?: boolean
 }
 
+interface UserData {
+  id: number
+  name: string
+  email: string
+  username: string
+  role: string
+  role_label: string
+  profile_photo_url: string | null
+}
+
 export default function Navbar({ onMenuClick, isSidebarOpen = false }: NavbarProps = {}) {
   const pathname = usePathname()
   const router = useRouter()
+  const { user: authUser } = useAuth()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [isVisible, setIsVisible] = useState(true)
@@ -22,6 +35,8 @@ export default function Navbar({ onMenuClick, isSidebarOpen = false }: NavbarPro
   const [mobileNavHidden, setMobileNavHidden] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [entered, setEntered] = useState(false)
+  const [userData, setUserData] = useState<UserData | null>(null)
+  const [loadingUser, setLoadingUser] = useState(true)
 
   const handleLogout = () => {
     // Clear all cookies
@@ -40,6 +55,27 @@ export default function Navbar({ onMenuClick, isSidebarOpen = false }: NavbarPro
     const t = setTimeout(() => setEntered(true), 80)
     return () => clearTimeout(t)
   }, [])
+
+  // Fetch user data from API
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        if (authUser?.id) {
+          setLoadingUser(true)
+          const response = await authService.getUserById(authUser.id)
+          if (response.data) {
+            setUserData(response.data)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch user data:', error)
+      } finally {
+        setLoadingUser(false)
+      }
+    }
+
+    fetchUserData()
+  }, [authUser?.id])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -185,9 +221,9 @@ export default function Navbar({ onMenuClick, isSidebarOpen = false }: NavbarPro
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className="flex items-center gap-2 px-2 lg:px-3 py-2 rounded-full bg-white/15 hover:bg-white/25 transition-all group"
               >
-                <span className="text-white text-sm font-semibold hidden lg:inline">User</span>
+                <span className="text-white text-sm font-semibold hidden lg:inline">{userData?.name?.split(' ')[0] || 'User'}</span>
                 <div className="w-8 h-8 lg:w-9 lg:h-9 rounded-full bg-linear-to-br from-[#a8e6db] to-[#68b5ac] flex items-center justify-center text-white font-bold text-xs lg:text-sm border-2 border-white/30 group-hover:border-white/50 transition-all">
-                  AR
+                  {userData ? (userData.name.split(' ').map(n => n[0]).slice(0, 2).join('') || 'U') : 'U'}
                 </div>
               </button>
 
@@ -195,8 +231,9 @@ export default function Navbar({ onMenuClick, isSidebarOpen = false }: NavbarPro
               {userMenuOpen && (
                 <div className="absolute right-0 top-12 w-48 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden border border-white/20 animate-in fade-in slide-in-from-top-2 z-50">
                   <div className="p-4 border-b border-[#014140]/10">
-                    <p className="text-sm font-bold text-[#014140]">Alfian Rizki</p>
-                    <p className="text-xs text-[#4a8078]">student@isyarat.id</p>
+                    <p className="text-sm font-bold text-[#014140]">{userData?.name || 'User'}</p>
+                    <p className="text-xs text-[#4a8078]">{userData?.email || 'user@isyarat.id'}</p>
+                    {userData?.role_label && <p className="text-xs text-[#4a8078] mt-1">{userData.role_label}</p>}
                   </div>
 
                   <div className="p-2 space-y-1">
